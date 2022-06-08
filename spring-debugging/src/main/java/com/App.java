@@ -1,6 +1,5 @@
 package com;
 
-import com.zth.beans.Teacher;
 import com.zth.config.AppConfig;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
@@ -12,10 +11,12 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 public class App {
 	public static void main(String[] args) {
 		AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(AppConfig.class);
+		context.close();
 
-		context.refresh();
-
-		Teacher bean = context.getBean(Teacher.class);
-		System.out.println(bean);
 	}
+
+
+
+
+
 }
