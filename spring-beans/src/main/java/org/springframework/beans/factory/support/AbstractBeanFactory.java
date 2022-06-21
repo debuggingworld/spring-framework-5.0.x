@@ -456,6 +456,10 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 
 	@Override
 	public boolean isTypeMatch(String name, ResolvableType typeToMatch) throws NoSuchBeanDefinitionException {
+
+		// 判断 name 所有对应的 Bean 类型是不是 typeToMatch
+
+		// 如果name是&xxx,则 beanName是xxx
 		String beanName = transformedBeanName(name);
 
 		// Check manually registered singletons.
