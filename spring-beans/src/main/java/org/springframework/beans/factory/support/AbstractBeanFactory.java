@@ -464,21 +464,27 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 
 		// Check manually registered singletons.
 		Object beanInstance = getSingleton(beanName, false);
+		// 已经初始化
 		if (beanInstance != null && beanInstance.getClass() != NullBean.class) {
+			// 是 FactoryBean
 			if (beanInstance instanceof FactoryBean) {
 				if (!BeanFactoryUtils.isFactoryDereference(name)) {
+					// 调用 FactoryBean.getObjectType()
 					Class<?> type = getTypeForFactoryBean((FactoryBean<?>) beanInstance);
 					return (type != null && typeToMatch.isAssignableFrom(type));
 				}
 				else {
+					// &xxx
 					return typeToMatch.isInstance(beanInstance);
 				}
 			}
+			// 是普通 Bean
 			else if (!BeanFactoryUtils.isFactoryDereference(name)) {
 				if (typeToMatch.isInstance(beanInstance)) {
 					// Direct match for exposed instance?
 					return true;
 				}
+				// 带有泛型的情况
 				else if (typeToMatch.hasGenerics() && containsBeanDefinition(beanName)) {
 					// Generics potentially only match on the target class, not on the proxy...
 					RootBeanDefinition mbd = getMergedLocalBeanDefinition(beanName);
@@ -513,6 +519,8 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 			// No bean definition found in this factory -> delegate to parent.
 			return parentBeanFactory.isTypeMatch(originalBeanName(name), typeToMatch);
 		}
+
+		// 单例池中不存在，就根据 BeanDefinition 来判断
 
 		// Retrieve corresponding bean definition.
 		RootBeanDefinition mbd = getMergedLocalBeanDefinition(beanName);
