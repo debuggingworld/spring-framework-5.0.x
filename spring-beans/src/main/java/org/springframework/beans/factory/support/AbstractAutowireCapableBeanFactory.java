@@ -521,21 +521,22 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		// 为了解决循环依赖提前缓存单例创建工厂
 		boolean earlySingletonExposure = (mbd.isSingleton() && this.allowCircularReferences &&
 				isSingletonCurrentlyInCreation(beanName));
+		// 支持循环依赖
 		if (earlySingletonExposure) {
 			if (logger.isDebugEnabled()) {
 				logger.debug("Eagerly caching bean '" + beanName +
 						"' to allow for resolving potential circular references");
 			}
-			// 添加到三级缓存
+			// 添加到三级缓存  lambda 表达式  此处并不能确定当前Bean存不存在循环依赖 （如果存在循环依赖才用的到）
 			addSingletonFactory(beanName, () -> getEarlyBeanReference(beanName, mbd, bean));
 		}
 
 		// Initialize the bean instance.
 		Object exposedObject = bean;
 		try {
-			// 填充属性  postProcessAfterInstantiation
+			// 填充属性  postProcessAfterInstantiation  getBean()
 			populateBean(beanName, mbd, instanceWrapper);
-			// 初始化
+			// 初始化  如果没有循环依赖，返回AOP代理对象，如果存在循环依赖返回原始对象
 			exposedObject = initializeBean(beanName, exposedObject, mbd);
 		}
 		catch (Throwable ex) {
@@ -548,7 +549,9 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			}
 		}
 
+		// 如果支持循环依赖
 		if (earlySingletonExposure) {
+			// 如果存在循环依赖了，拿到的是AOP代理对象
 			Object earlySingletonReference = getSingleton(beanName, false);
 			if (earlySingletonReference != null) {
 				if (exposedObject == bean) {
