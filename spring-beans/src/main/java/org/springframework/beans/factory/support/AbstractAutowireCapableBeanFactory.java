@@ -554,6 +554,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			// 如果存在循环依赖了，拿到的是AOP代理对象
 			Object earlySingletonReference = getSingleton(beanName, false);
 			if (earlySingletonReference != null) {
+				// 大部分场景是相同的，使用了 @Async 等时 BeanPostProcessor
 				if (exposedObject == bean) {
 					exposedObject = earlySingletonReference;
 				}
@@ -1059,28 +1060,32 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 
 		Supplier<?> instanceSupplier = mbd.getInstanceSupplier();
 		if (instanceSupplier != null) {
-			// Supplier 创建对象
+			// Supplier 创建对象  beanDefinition.setInstanceSupplier(UserService::new);
 			return obtainFromSupplier(instanceSupplier, beanName);
 		}
-		// 通过工厂方法创建 Bean
+		// 通过工厂方法创建 Bean  @Bean 对应的 BeanDefinition
 		if (mbd.getFactoryMethodName() != null) {
 			return instantiateUsingFactoryMethod(beanName, mbd, args);
 		}
 
 		// Shortcut when re-creating the same bean...
+		// 原型 BeanDefinition 会多次创建 Bean ，所以对 BeanDefinition 进行缓存，
 		boolean resolved = false;
 		boolean autowireNecessary = false;
+		// 没有参数时判断有没有缓存过
 		if (args == null) {
 			synchronized (mbd.constructorArgumentLock) {
 				if (mbd.resolvedConstructorOrFactoryMethod != null) {
 					resolved = true;
+					// autowireNecessary 表示有没有必要进行注入，比如使用无参构造器时为 false
 					autowireNecessary = mbd.constructorArgumentsResolved;
 				}
 			}
 		}
 		if (resolved) {
-			// 确定了构造方法。判断是否都构造方法进行参数的依赖注入
+			// 确定了构造方法。判断是否需要通过构造方法进行参数的依赖注入
 			if (autowireNecessary) {
+				// 方法内会拿到缓存好的构造方法入参
 				return autowireConstructor(beanName, mbd, null, null);
 			}
 			else {
@@ -1089,20 +1094,25 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			}
 		}
 
+		// 如果获取 Bean 时带有参数，则开始找构造方法
+
 		// Candidate constructors for autowiring?
 		// 提供扩展点，可以利用 SmartInstantiationAwareBeanPostProcessor 来控制用 beanClass 中的哪个构造方法
+		// 如果 AutowiredAnnotationBeanPostProcessor 会把 @Autowired 注解的构造方法找出来
 		Constructor<?>[] ctors = determineConstructorsFromBeanPostProcessors(beanClass, beanName);
 
 		// 如果  ctors 有值则需要进行构造方法注入
 		// 或者 autowiredMode 是 AUTOWIRE_CONSTRUCTOR
-		// 或者 BeanDefinition 中添加了构造方法参数和值
+		// 或者 BeanDefinition 中添加了构造方法参数和值   beanDefinition.getConstructorArgumentValues().addGenericArgumentValue(new OrderServer());
 		// 或者调用 getBean 时传入了 args
 		if (ctors != null || mbd.getResolvedAutowireMode() == AUTOWIRE_CONSTRUCTOR ||
 				mbd.hasConstructorArgumentValues() || !ObjectUtils.isEmpty(args)) {
+			// 找到要用的构造方法以及需要注入的参数，可能是一个或多个
 			return autowireConstructor(beanName, mbd, ctors, args);
 		}
 
 		// No special handling: simply use no-arg constructor.
+		// 不匹配以上情况，直接使用无参构造方法
 		return instantiateBean(beanName, mbd);
 	}
 
@@ -1200,6 +1210,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 						getAccessControlContext());
 			}
 			else {
+				// 默认是 CglibSubclassingInstantiationStrategy
 				beanInstance = getInstantiationStrategy().instantiate(mbd, beanName, this);
 			}
 			BeanWrapper bw = new BeanWrapperImpl(beanInstance);

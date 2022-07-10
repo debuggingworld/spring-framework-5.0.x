@@ -223,10 +223,12 @@ public void postProcessMergedBeanDefinition(RootBeanDefinition beanDefinition, C
 		// Let's check for lookup methods here...
 		if (!this.lookupMethodsChecked.contains(beanName)) {
 			try {
+				// 遍历方法，查看是否有被 @Lookup 注解的
 				ReflectionUtils.doWithMethods(beanClass, method -> {
 					Lookup lookup = method.getAnnotation(Lookup.class);
 					if (lookup != null) {
 						Assert.state(this.beanFactory != null, "No BeanFactory available");
+						// 将当前 method 封装成 LookupOverride，并设置到 beanDefinition 的 MethodOverrides  中
 						LookupOverride override = new LookupOverride(method, lookup.value());
 						try {
 							RootBeanDefinition mbd = (RootBeanDefinition)
@@ -247,6 +249,7 @@ public void postProcessMergedBeanDefinition(RootBeanDefinition beanDefinition, C
 		}
 
 		// Quick check on the concurrent map first, with minimal locking.
+		// 先从缓存中找
 		Constructor<?>[] candidateConstructors = this.candidateConstructorsCache.get(beanClass);
 		if (candidateConstructors == null) {
 			// Fully synchronized resolution now...
@@ -255,6 +258,7 @@ public void postProcessMergedBeanDefinition(RootBeanDefinition beanDefinition, C
 				if (candidateConstructors == null) {
 					Constructor<?>[] rawCandidates;
 					try {
+						// 拿到所有的构造方法
 						rawCandidates = beanClass.getDeclaredConstructors();
 					}
 					catch (Throwable ex) {
@@ -263,10 +267,14 @@ public void postProcessMergedBeanDefinition(RootBeanDefinition beanDefinition, C
 								"] from ClassLoader [" + beanClass.getClassLoader() + "] failed", ex);
 					}
 					List<Constructor<?>> candidates = new ArrayList<>(rawCandidates.length);
+					// 用来记录 required 为 true 的构造方法，一个类中只能有一个
 					Constructor<?> requiredConstructor = null;
+					// 用来记录默认无参构造器
 					Constructor<?> defaultConstructor = null;
+					// kotlin 相关
 					Constructor<?> primaryConstructor = BeanUtils.findPrimaryConstructor(beanClass);
 					int nonSyntheticConstructors = 0;
+					// 遍历所有构造方法
 					for (Constructor<?> candidate : rawCandidates) {
 						if (!candidate.isSynthetic()) {
 							nonSyntheticConstructors++;
@@ -274,10 +282,14 @@ public void postProcessMergedBeanDefinition(RootBeanDefinition beanDefinition, C
 						else if (primaryConstructor != null) {
 							continue;
 						}
+
+						// 判断构造方法是否被 @Autowired 注解
 						AnnotationAttributes ann = findAutowiredAnnotation(candidate);
 						if (ann == null) {
+							// 如果 beanClass 是代理类，则得到被代理的类
 							Class<?> userClass = ClassUtils.getUserClass(beanClass);
 							if (userClass != beanClass) {
+								// 若果构造方法没有被 @Autowired 注解，则去找被代理对象的该构造方法是否被 @Autowired 注解
 								try {
 									Constructor<?> superCtor =
 											userClass.getDeclaredConstructor(candidate.getParameterTypes());
@@ -288,7 +300,9 @@ public void postProcessMergedBeanDefinition(RootBeanDefinition beanDefinition, C
 								}
 							}
 						}
+						// 被 @Autowired 注解
 						if (ann != null) {
+							// 一个类中如果有一个 required 为 true 构造方法,那就不能有其他被 @Autowired 注解的构造方法了
 							if (requiredConstructor != null) {
 								throw new BeanCreationException(beanName,
 										"Invalid autowire-marked constructor: " + candidate +
@@ -303,16 +317,22 @@ public void postProcessMergedBeanDefinition(RootBeanDefinition beanDefinition, C
 											". Found constructor with 'required' Autowired annotation: " +
 											candidate);
 								}
+								// 记录唯一一个 required 为 true 的构造方法
 								requiredConstructor = candidate;
 							}
+							// 记录所有被 @Autowired 注解的构造方法
 							candidates.add(candidate);
 						}
 						else if (candidate.getParameterCount() == 0) {
+							// 没有被 @Autowired 注解且参数个数为 0
+							// 记录无参构造方法
 							defaultConstructor = candidate;
 						}
 					}
+					// candidates  中要么全为 false,要么只有一个 true
 					if (!candidates.isEmpty()) {
 						// Add default constructor to list of optional constructors, as fallback.
+						// 如果不不存在 required 为 true 的构造方法，则所有 required 为 false 和 无参构造方法都是合格的
 						if (requiredConstructor == null) {
 							if (defaultConstructor != null) {
 								candidates.add(defaultConstructor);
@@ -324,8 +344,10 @@ public void postProcessMergedBeanDefinition(RootBeanDefinition beanDefinition, C
 										"default constructor to fall back to: " + candidates.get(0));
 							}
 						}
+						// 如果有一个 required 为 true 的构造方法，那就只有该构造方法是合格的
 						candidateConstructors = candidates.toArray(new Constructor<?>[0]);
 					}
+					// 如果没有添加 @Autowired 注解的构造方法，并且类中只有一个构造方法，并且是有参的
 					else if (rawCandidates.length == 1 && rawCandidates[0].getParameterCount() > 0) {
 						candidateConstructors = new Constructor<?>[] {rawCandidates[0]};
 					}
@@ -337,6 +359,7 @@ public void postProcessMergedBeanDefinition(RootBeanDefinition beanDefinition, C
 						candidateConstructors = new Constructor<?>[] {primaryConstructor};
 					}
 					else {
+						// 如果有过多个有参，并且没有被 @Autowired 注解，返回空
 						candidateConstructors = new Constructor<?>[0];
 					}
 					this.candidateConstructorsCache.put(beanClass, candidateConstructors);
