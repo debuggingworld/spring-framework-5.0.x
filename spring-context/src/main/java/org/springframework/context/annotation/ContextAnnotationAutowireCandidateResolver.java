@@ -16,15 +16,6 @@
 
 package org.springframework.context.annotation;
 
-import java.lang.annotation.Annotation;
-import java.lang.reflect.Method;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import org.springframework.aop.TargetSource;
 import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.beans.factory.BeanFactory;
@@ -37,6 +28,10 @@ import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
+import java.util.*;
+
 /**
  * Complete implementation of the
  * {@link org.springframework.beans.factory.support.AutowireCandidateResolver} strategy
@@ -48,6 +43,9 @@ import org.springframework.util.Assert;
  */
 public class ContextAnnotationAutowireCandidateResolver extends QualifierAnnotationAutowireCandidateResolver {
 
+	/**
+	 *  判断是不是懒注入（@Autowired+@Lazy),如果是则注入时生成一个代理对象注入给属性
+	 */
 	@Override
 	@Nullable
 	public Object getLazyResolutionProxyIfNecessary(DependencyDescriptor descriptor, @Nullable String beanName) {

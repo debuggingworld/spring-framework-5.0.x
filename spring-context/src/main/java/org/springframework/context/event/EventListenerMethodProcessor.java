@@ -16,17 +16,8 @@
 
 package org.springframework.context.event;
 
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
 import org.springframework.aop.framework.autoproxy.AutoProxyUtils;
 import org.springframework.aop.scope.ScopedObject;
 import org.springframework.aop.scope.ScopedProxyUtils;
@@ -43,6 +34,10 @@ import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
+
+import java.lang.reflect.Method;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Registers {@link EventListener} methods as individual {@link ApplicationListener} instances.
@@ -136,6 +131,7 @@ public class EventListenerMethodProcessor implements SmartInitializingSingleton,
 	protected void processBean(
 			final List<EventListenerFactory> factories, final String beanName, final Class<?> targetType) {
 
+		// 找到所有加了 @EventListener 注解的方法
 		if (!this.nonAnnotatedClasses.contains(targetType)) {
 			Map<Method, EventListener> annotatedMethods = null;
 			try {
@@ -160,6 +156,8 @@ public class EventListenerMethodProcessor implements SmartInitializingSingleton,
 				ConfigurableApplicationContext context = getApplicationContext();
 				for (Method method : annotatedMethods.keySet()) {
 					for (EventListenerFactory factory : factories) {
+						// 利用 EventListenerFactory 将加了 @EventListener 注解的方法生成 ApplicationListener 对象
+						// 通过 DefaultEventListenerFactory 进行适配
 						if (factory.supportsMethod(method)) {
 							Method methodToUse = AopUtils.selectInvocableMethod(method, context.getType(beanName));
 							ApplicationListener<?> applicationListener =
