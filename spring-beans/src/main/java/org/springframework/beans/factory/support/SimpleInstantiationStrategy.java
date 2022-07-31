@@ -153,6 +153,9 @@ public class SimpleInstantiationStrategy implements InstantiationStrategy {
 			Method priorInvokedFactoryMethod = currentlyInvokedFactoryMethod.get();
 			try {
 				currentlyInvokedFactoryMethod.set(factoryMethod);
+				// factoryBean 就是 AppConfig 的代理对象（如果加了 @Configuration）
+				// factoryMethod 就是 @Bean 修饰的方法
+				// 如果是代理对象会进到拦截器
 				Object result = factoryMethod.invoke(factoryBean, args);
 				if (result == null) {
 					result = new NullBean();
