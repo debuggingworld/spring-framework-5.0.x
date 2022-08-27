@@ -333,17 +333,34 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 		if (StringUtils.hasLength(beanName) && this.targetSourcedBeans.contains(beanName)) {
 			return bean;
 		}
+
+		// advisedBeans 表示已经判断过的 Bean.false 表示不需要进行 Aop
 		if (Boolean.FALSE.equals(this.advisedBeans.get(cacheKey))) {
 			return bean;
 		}
+
+		/**
+		 * protected boolean isInfrastructureClass(Class<?> beanClass) {
+		 * 	boolean retVal = Advice.class.isAssignableFrom(beanClass) ||
+		 * 			Pointcut.class.isAssignableFrom(beanClass) ||
+		 * 			Advisor.class.isAssignableFrom(beanClass) ||
+		 * 			AopInfrastructureBean.class.isAssignableFrom(beanClass);
+		 *
+		 * 	return retVal;
+		 * }
+		 */
+		// 判断是否不需要 AOP。如切面Bean
 		if (isInfrastructureClass(bean.getClass()) || shouldSkip(bean.getClass(), beanName)) {
 			this.advisedBeans.put(cacheKey, Boolean.FALSE);
 			return bean;
 		}
 
 		// Create proxy if we have advice.
+		// 判断当前 Bean 是否存在匹配的 advice,如果存在则生成代理对象
+		// 会根据类以及类中的方法匹配 Interceptor,
 		Object[] specificInterceptors = getAdvicesAndAdvisorsForBean(bean.getClass(), beanName, null);
 		if (specificInterceptors != DO_NOT_PROXY) {
+			// 记录已经进行 Aop 了
 			this.advisedBeans.put(cacheKey, Boolean.TRUE);
 			Object proxy = createProxy(
 					bean.getClass(), beanName, specificInterceptors, new SingletonTargetSource(bean));
@@ -454,6 +471,8 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 		}
 
 		Advisor[] advisors = buildAdvisors(beanName, specificInterceptors);
+		// 在这一步会判断 advisors 中是否有 IntroductionAdvisor
+		// 如果存在则将对象的 interface 加入 proxyFactory
 		proxyFactory.addAdvisors(advisors);
 		proxyFactory.setTargetSource(targetSource);
 		customizeProxyFactory(proxyFactory);
@@ -463,6 +482,7 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 			proxyFactory.setPreFiltered(true);
 		}
 
+		// 代理对象执行方法的时候会 进行筛选（proxyFactory）
 		return proxyFactory.getProxy(getProxyClassLoader());
 	}
 

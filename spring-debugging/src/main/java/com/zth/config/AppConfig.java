@@ -2,6 +2,7 @@ package com.zth.config;
 
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.EnableAspectJAutoProxy;
 
 /**
  * @author 猫和少年
@@ -10,6 +11,7 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 @ComponentScan("com.zth")
+@EnableAspectJAutoProxy
 public class AppConfig {
 
 }

@@ -16,6 +16,14 @@
 
 package org.springframework.aop.support;
 
+import org.springframework.aop.*;
+import org.springframework.core.BridgeMethodResolver;
+import org.springframework.core.MethodIntrospector;
+import org.springframework.lang.Nullable;
+import org.springframework.util.Assert;
+import org.springframework.util.ClassUtils;
+import org.springframework.util.ReflectionUtils;
+
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -24,22 +32,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-
-import org.springframework.aop.Advisor;
-import org.springframework.aop.AopInvocationException;
-import org.springframework.aop.IntroductionAdvisor;
-import org.springframework.aop.IntroductionAwareMethodMatcher;
-import org.springframework.aop.MethodMatcher;
-import org.springframework.aop.Pointcut;
-import org.springframework.aop.PointcutAdvisor;
-import org.springframework.aop.SpringProxy;
-import org.springframework.aop.TargetClassAware;
-import org.springframework.core.BridgeMethodResolver;
-import org.springframework.core.MethodIntrospector;
-import org.springframework.lang.Nullable;
-import org.springframework.util.Assert;
-import org.springframework.util.ClassUtils;
-import org.springframework.util.ReflectionUtils;
 
 /**
  * Utility methods for AOP support code.
@@ -222,10 +214,13 @@ public abstract class AopUtils {
 	 */
 	public static boolean canApply(Pointcut pc, Class<?> targetClass, boolean hasIntroductions) {
 		Assert.notNull(pc, "Pointcut must not be null");
+
+		// 先匹配类
 		if (!pc.getClassFilter().matches(targetClass)) {
 			return false;
 		}
 
+		// 匹配方法
 		MethodMatcher methodMatcher = pc.getMethodMatcher();
 		if (methodMatcher == MethodMatcher.TRUE) {
 			// No need to iterate the methods if we're matching any method anyway...
@@ -248,6 +243,7 @@ public abstract class AopUtils {
 			for (Method method : methods) {
 				if (introductionAwareMethodMatcher != null ?
 						introductionAwareMethodMatcher.matches(method, targetClass, hasIntroductions) :
+						// 其中一个方法匹配即可
 						methodMatcher.matches(method, targetClass)) {
 					return true;
 				}
@@ -317,6 +313,7 @@ public abstract class AopUtils {
 				// already processed
 				continue;
 			}
+			// 判断 class 和 PointCut 是否匹配
 			if (canApply(candidate, clazz, hasIntroductions)) {
 				eligibleAdvisors.add(candidate);
 			}
@@ -340,6 +337,7 @@ public abstract class AopUtils {
 		// Use reflection to invoke the method.
 		try {
 			ReflectionUtils.makeAccessible(method);
+			// 执行普通对象的方法，
 			return method.invoke(target, args);
 		}
 		catch (InvocationTargetException ex) {

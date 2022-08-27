@@ -16,23 +16,19 @@
 
 package org.springframework.aop.framework;
 
+import org.aopalliance.intercept.Interceptor;
+import org.aopalliance.intercept.MethodInterceptor;
+import org.springframework.aop.*;
+import org.springframework.aop.framework.adapter.AdvisorAdapterRegistry;
+import org.springframework.aop.framework.adapter.GlobalAdvisorAdapterRegistry;
+import org.springframework.aop.support.MethodMatchers;
+import org.springframework.lang.Nullable;
+
 import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
-import org.aopalliance.intercept.Interceptor;
-import org.aopalliance.intercept.MethodInterceptor;
-
-import org.springframework.aop.Advisor;
-import org.springframework.aop.IntroductionAdvisor;
-import org.springframework.aop.MethodMatcher;
-import org.springframework.aop.PointcutAdvisor;
-import org.springframework.aop.framework.adapter.AdvisorAdapterRegistry;
-import org.springframework.aop.framework.adapter.GlobalAdvisorAdapterRegistry;
-import org.springframework.aop.support.MethodMatchers;
-import org.springframework.lang.Nullable;
 
 /**
  * A simple but definitive way of working out an advice chain for a Method,
@@ -58,14 +54,41 @@ public class DefaultAdvisorChainFactory implements AdvisorChainFactory, Serializ
 		boolean hasIntroductions = hasMatchingIntroductions(config, actualClass);
 		AdvisorAdapterRegistry registry = GlobalAdvisorAdapterRegistry.getInstance();
 
+		// 从 ProxyFactory 中拿到设置的 advice（添加时被封装成 DefaultPointcutAdvisor,PointCut 为 true）
+		// 添加的时候会控制顺序
 		for (Advisor advisor : config.getAdvisors()) {
 			if (advisor instanceof PointcutAdvisor) {
 				// Add it conditionally.
 				PointcutAdvisor pointcutAdvisor = (PointcutAdvisor) advisor;
+				// 先匹配类
+				/**
+				 * public interface Pointcut {
+				 *
+				 * 	ClassFilter getClassFilter();
+				 *
+				 * 	MethodMatcher getMethodMatcher();
+				 *
+				 * 	Pointcut TRUE = TruePointcut.INSTANCE;
+				 *
+				 * }
+				 */
 				if (config.isPreFiltered() || pointcutAdvisor.getPointcut().getClassFilter().matches(actualClass)) {
 					MethodMatcher mm = pointcutAdvisor.getPointcut().getMethodMatcher();
+					// 匹配方法
 					if (MethodMatchers.matches(mm, method, actualClass, hasIntroductions)) {
+						// 如果匹配则将 Advisor 封装为 MethodInterceptor，
 						MethodInterceptor[] interceptors = registry.getInterceptors(advisor);
+
+						/**
+						 * public interface MethodMatcher {
+						 *
+						 *  	boolean matches(Method method, Class<?> targetClass);
+						 *      boolean isRuntime();
+						 *  	boolean matches(Method method, Class<?> targetClass, Object... args);
+						 *
+						 * }
+						 *
+						 */
 						if (mm.isRuntime()) {
 							// Creating a new object instance in the getInterceptors() method
 							// isn't a problem as we normally cache created chains.

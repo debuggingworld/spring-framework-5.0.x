@@ -16,11 +16,11 @@
 
 package org.springframework.aop.aspectj;
 
-import java.io.Serializable;
-import java.lang.reflect.Method;
-
 import org.springframework.aop.MethodBeforeAdvice;
 import org.springframework.lang.Nullable;
+
+import java.io.Serializable;
+import java.lang.reflect.Method;
 
 /**
  * Spring AOP advice that wraps an AspectJ before method.
@@ -32,6 +32,12 @@ import org.springframework.lang.Nullable;
 @SuppressWarnings("serial")
 public class AspectJMethodBeforeAdvice extends AbstractAspectJAdvice implements MethodBeforeAdvice, Serializable {
 
+	/**
+	 *
+	 * @param aspectJBeforeAdviceMethod method 对象
+	 * @param pointcut @Before 对应的 PointCut
+	 * @param aif
+	 */
 	public AspectJMethodBeforeAdvice(
 			Method aspectJBeforeAdviceMethod, AspectJExpressionPointcut pointcut, AspectInstanceFactory aif) {
 
