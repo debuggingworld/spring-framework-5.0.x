@@ -16,15 +16,14 @@
 
 package org.springframework.transaction.interceptor;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.springframework.lang.Nullable;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
-import org.springframework.lang.Nullable;
 
 /**
  * TransactionAttribute implementation that works out whether a given exception
@@ -138,6 +137,8 @@ public class RuleBasedTransactionAttribute extends DefaultTransactionAttribute i
 		int deepest = Integer.MAX_VALUE;
 
 		if (this.rollbackRules != null) {
+			// 遍历所有的 RollbackRuleAttribute
+			// 判断抛出的异常和 RollbackRuleAttribute 中指定的异常及其子类是否匹配
 			for (RollbackRuleAttribute rule : this.rollbackRules) {
 				int depth = rule.getDepth(ex);
 				if (depth >= 0 && depth < deepest) {
@@ -152,11 +153,13 @@ public class RuleBasedTransactionAttribute extends DefaultTransactionAttribute i
 		}
 
 		// User superclass behavior (rollback on unchecked) if no rule matches.
+		// 如果没有指定，则使用父类规则
 		if (winner == null) {
 			logger.trace("No relevant rollback rule found: applying default rules");
 			return super.rollbackOn(ex);
 		}
 
+		// ex 如果匹配 RollbackRuleAttribute ，则进行匹配 NoRollbackRuleAttribute
 		return !(winner instanceof NoRollbackRuleAttribute);
 	}
 

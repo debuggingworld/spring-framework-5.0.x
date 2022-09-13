@@ -16,13 +16,8 @@
 
 package org.springframework.transaction.interceptor;
 
-import java.lang.reflect.Method;
-import java.util.Properties;
-import java.util.concurrent.ConcurrentMap;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.InitializingBean;
@@ -38,6 +33,10 @@ import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.ConcurrentReferenceHashMap;
 import org.springframework.util.StringUtils;
+
+import java.lang.reflect.Method;
+import java.util.Properties;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * Base class for transactional aspects, such as the {@link TransactionInterceptor}
@@ -279,29 +278,51 @@ public abstract class TransactionAspectSupport implements BeanFactoryAware, Init
 			final InvocationCallback invocation) throws Throwable {
 
 		// If the transaction attribute is null, the method is non-transactional.
+		// TransactionAttribute 就是 @Transactional 中的配置
 		TransactionAttributeSource tas = getTransactionAttributeSource();
+		// 获取 @Transactional 注解中的属性
 		final TransactionAttribute txAttr = (tas != null ? tas.getTransactionAttribute(method, targetClass) : null);
+
+		// 获取 Spring 中类型为 TransactionManager 的 Bean
 		final PlatformTransactionManager tm = determineTransactionManager(txAttr);
+
+		// joinPoint 的唯一标识，就是当前执行方法的名字
 		final String joinpointIdentification = methodIdentification(method, targetClass, txAttr);
 
+		/**
+		 *     @Bean
+		 *     public PlatformTransactionManager platformTransactionManager(){
+		 *         DataSourceTransactionManager transactionManager = new DataSourceTransactionManager(dataSource());
+		 *         transactionManager.setGlobalRollbackOnParticipationFailure(false);
+		 *         return transactionManager;
+		 *     }
+		 */
+
+		// CallbackPreferringPlatformTransactionManager  表示拥有回调功能的 PlatformTransactionManager ，不常用
 		if (txAttr == null || !(tm instanceof CallbackPreferringPlatformTransactionManager)) {
 			// Standard transaction demarcation with getTransaction and commit/rollback calls.
+			// 如果有必要就创建事务，此处涉及事务的传播机制
+			// TransactionInfo 表示一个逻辑事务
+			// 挂起在此处完成
 			TransactionInfo txInfo = createTransactionIfNecessary(tm, txAttr, joinpointIdentification);
 
 			Object retVal;
 			try {
 				// This is an around advice: Invoke the next interceptor in the chain.
 				// This will normally result in a target object being invoked.
+				// 执行下一个 Interceptor 或被代理对象中的方法
 				retVal = invocation.proceedWithInvocation();
 			}
 			catch (Throwable ex) {
 				// target invocation exception
+				// 抛出异常，回滚事务
 				completeTransactionAfterThrowing(txInfo, ex);
 				throw ex;
 			}
 			finally {
 				cleanupTransactionInfo(txInfo);
 			}
+			// 提交事务
 			commitTransactionAfterReturning(txInfo);
 			return retVal;
 		}
@@ -470,6 +491,8 @@ public abstract class TransactionAspectSupport implements BeanFactoryAware, Init
 			};
 		}
 
+		// 每个逻辑事务都会创建一个 TransactionStatus
+		// TransactionStatus 中有一个属性代表当前逻辑事务底层的物理事务是不是新的
 		TransactionStatus status = null;
 		if (txAttr != null) {
 			if (tm != null) {
@@ -519,6 +542,7 @@ public abstract class TransactionAspectSupport implements BeanFactoryAware, Init
 		// a new transaction here. This guarantees that the TransactionInfo stack
 		// will be managed correctly even if no transaction was created by this aspect.
 		txInfo.bindToThread();
+		// 将当前事务挂起信息设置到 ThreadLocal
 		return txInfo;
 	}
 
@@ -549,6 +573,7 @@ public abstract class TransactionAspectSupport implements BeanFactoryAware, Init
 						"] after exception: " + ex);
 			}
 			if (txInfo.transactionAttribute != null && txInfo.transactionAttribute.rollbackOn(ex)) {
+				// 需要回滚
 				try {
 					txInfo.getTransactionManager().rollback(txInfo.getTransactionStatus());
 				}
@@ -563,6 +588,7 @@ public abstract class TransactionAspectSupport implements BeanFactoryAware, Init
 				}
 			}
 			else {
+				// 不需要回滚
 				// We don't roll back on this exception.
 				// Will still roll back if TransactionStatus.isRollbackOnly() is true.
 				try {

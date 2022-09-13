@@ -44,9 +44,14 @@ public class TransactionManagementConfigurationSelector extends AdviceModeImport
 	protected String[] selectImports(AdviceMode adviceMode) {
 		switch (adviceMode) {
 			case PROXY:
-				return new String[] {AutoProxyRegistrar.class.getName(),
+				// 默认是 Proxy
+				return new String[] {
+						// 添加了 BeanPostProcessor, 相当于开启 aop
+						AutoProxyRegistrar.class.getName(),
+						// 添加三个 Bean
 						ProxyTransactionManagementConfiguration.class.getName()};
 			case ASPECTJ:
+				// 使用 Aspect
 				return new String[] {
 						TransactionManagementConfigUtils.TRANSACTION_ASPECT_CONFIGURATION_CLASS_NAME};
 			default:
