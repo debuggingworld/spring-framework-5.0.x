@@ -16,17 +16,8 @@
 
 package org.springframework.web.context;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.concurrent.ConcurrentHashMap;
-import javax.servlet.ServletContext;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
 import org.springframework.beans.BeanUtils;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextException;
@@ -41,6 +32,14 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
+
+import javax.servlet.ServletContext;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Performs the actual initialization work for the root application context.
@@ -261,7 +260,7 @@ public class ContextLoader {
 		if (servletContext.getAttribute(WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE) != null) {
 			throw new IllegalStateException(
 					"Cannot initialize context because there is already a root application context present - " +
-					"check whether you have multiple ContextLoader* definitions in your web.xml!");
+							"check whether you have multiple ContextLoader* definitions in your web.xml!");
 		}
 
 		Log logger = LogFactory.getLog(ContextLoader.class);
@@ -275,6 +274,7 @@ public class ContextLoader {
 			// Store context in local instance variable, to guarantee that
 			// it is available on ServletContext shutdown.
 			if (this.context == null) {
+				// xml 创建的情况
 				this.context = createWebApplicationContext(servletContext);
 			}
 			if (this.context instanceof ConfigurableWebApplicationContext) {
@@ -288,16 +288,19 @@ public class ContextLoader {
 						ApplicationContext parent = loadParentContext(servletContext);
 						cwac.setParent(parent);
 					}
+					// 配置并刷新容器
 					configureAndRefreshWebApplicationContext(cwac, servletContext);
 				}
 			}
+			// 在 servlet 域中设置根容器
+			// 在 DispatcherServlet 中使用，进行绑定父子容器
 			servletContext.setAttribute(WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE, this.context);
 
+			// 获取线程上下文类加载器，默认为 webAppClassLoader
 			ClassLoader ccl = Thread.currentThread().getContextClassLoader();
 			if (ccl == ContextLoader.class.getClassLoader()) {
 				currentContext = this.context;
-			}
-			else if (ccl != null) {
+			} else if (ccl != null) {
 				currentContextPerThread.put(ccl, this.context);
 			}
 
@@ -311,13 +314,11 @@ public class ContextLoader {
 			}
 
 			return this.context;
-		}
-		catch (RuntimeException ex) {
+		} catch (RuntimeException ex) {
 			logger.error("Context initialization failed", ex);
 			servletContext.setAttribute(WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE, ex);
 			throw ex;
-		}
-		catch (Error err) {
+		} catch (Error err) {
 			logger.error("Context initialization failed", err);
 			servletContext.setAttribute(WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE, err);
 			throw err;
@@ -380,6 +381,7 @@ public class ContextLoader {
 		if (ObjectUtils.identityToString(wac).equals(wac.getId())) {
 			// The application context id is still set to its original default value
 			// -> assign a more useful id based on available information
+			// 设置 id
 			String idParam = sc.getInitParameter(CONTEXT_ID_PARAM);
 			if (idParam != null) {
 				wac.setId(idParam);
@@ -391,7 +393,11 @@ public class ContextLoader {
 			}
 		}
 
+		// 设置 ServletContext 到 spring 的上下文
+		// 实现 ServletContextAware 接口获取 ServletContext
 		wac.setServletContext(sc);
+
+		// 获取 xml 方式 servlet 容器的全局参数  <param-name>contextConfigLocation</param-name>
 		String configLocationParam = sc.getInitParameter(CONFIG_LOCATION_PARAM);
 		if (configLocationParam != null) {
 			wac.setConfigLocation(configLocationParam);
@@ -406,6 +412,7 @@ public class ContextLoader {
 		}
 
 		customizeContext(sc, wac);
+		// 刷新容器
 		wac.refresh();
 	}
 

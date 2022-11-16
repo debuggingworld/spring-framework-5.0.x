@@ -482,15 +482,25 @@ public class DispatcherServlet extends FrameworkServlet {
 	/**
 	 * Initialize the strategy objects that this servlet uses.
 	 * <p>May be overridden in subclasses in order to initialize further strategy objects.
+	 *
+	 * 初始化策略
+	 * 带 s 的是多个
 	 */
 	protected void initStrategies(ApplicationContext context) {
+		//初始化我们web上下文对象的 用于文件上传下载的解析器对象
 		initMultipartResolver(context);
+		//初始化我们web上下文对象用于处理国际化资源的
 		initLocaleResolver(context);
+		//主题解析器对象初始化
 		initThemeResolver(context);
+		//初始化我们的HandlerMapping
 		initHandlerMappings(context);
+		//实例化我们的HandlerAdapters
 		initHandlerAdapters(context);
+		//实例化我们处理器异常解析器对象
 		initHandlerExceptionResolvers(context);
 		initRequestToViewNameTranslator(context);
+		//给DispatcherServlet的ViewResolvers处理器
 		initViewResolvers(context);
 		initFlashMapManager(context);
 	}
@@ -566,6 +576,8 @@ public class DispatcherServlet extends FrameworkServlet {
 	 * <p>If no HandlerMapping beans are defined in the BeanFactory for this namespace,
 	 * we default to BeanNameUrlHandlerMapping.
 	 */
+
+
 	private void initHandlerMappings(ApplicationContext context) {
 		this.handlerMappings = null;
 

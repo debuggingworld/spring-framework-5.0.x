@@ -16,19 +16,19 @@
 
 package org.springframework.web;
 
+import org.springframework.core.annotation.AnnotationAwareOrderComparator;
+import org.springframework.lang.Nullable;
+import org.springframework.util.ReflectionUtils;
+
+import javax.servlet.ServletContainerInitializer;
+import javax.servlet.ServletContext;
+import javax.servlet.ServletException;
+import javax.servlet.annotation.HandlesTypes;
 import java.lang.reflect.Modifier;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ServiceLoader;
 import java.util.Set;
-import javax.servlet.ServletContainerInitializer;
-import javax.servlet.ServletContext;
-import javax.servlet.ServletException;
-import javax.servlet.annotation.HandlesTypes;
-
-import org.springframework.core.annotation.AnnotationAwareOrderComparator;
-import org.springframework.lang.Nullable;
-import org.springframework.util.ReflectionUtils;
 
 /**
  * Servlet 3.0 {@link ServletContainerInitializer} designed to support code-based
@@ -137,6 +137,8 @@ public class SpringServletContainerInitializer implements ServletContainerInitia
 	 * @param servletContext the servlet context to be initialized
 	 * @see WebApplicationInitializer#onStartup(ServletContext)
 	 * @see AnnotationAwareOrderComparator
+	 *
+	 * @HandlesTypes 注解将 webAppInitializerClasses 传递进来
 	 */
 	@Override
 	public void onStartup(@Nullable Set<Class<?>> webAppInitializerClasses, ServletContext servletContext)
@@ -146,15 +148,13 @@ public class SpringServletContainerInitializer implements ServletContainerInitia
 
 		if (webAppInitializerClasses != null) {
 			for (Class<?> waiClass : webAppInitializerClasses) {
-				// Be defensive: Some servlet containers provide us with invalid classes,
-				// no matter what @HandlesTypes says...
+				// 实现了 WebApplicationInitializer 的类
 				if (!waiClass.isInterface() && !Modifier.isAbstract(waiClass.getModifiers()) &&
 						WebApplicationInitializer.class.isAssignableFrom(waiClass)) {
 					try {
-						initializers.add((WebApplicationInitializer)
-								ReflectionUtils.accessibleConstructor(waiClass).newInstance());
-					}
-					catch (Throwable ex) {
+						// 实例化并添加到集合中
+						initializers.add((WebApplicationInitializer) ReflectionUtils.accessibleConstructor(waiClass).newInstance());
+					} catch (Throwable ex) {
 						throw new ServletException("Failed to instantiate WebApplicationInitializer class", ex);
 					}
 				}
@@ -169,6 +169,7 @@ public class SpringServletContainerInitializer implements ServletContainerInitia
 		servletContext.log(initializers.size() + " Spring WebApplicationInitializers detected on classpath");
 		AnnotationAwareOrderComparator.sort(initializers);
 		for (WebApplicationInitializer initializer : initializers) {
+			// 调用 扩展内容
 			initializer.onStartup(servletContext);
 		}
 	}
